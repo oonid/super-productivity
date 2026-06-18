@@ -61,6 +61,8 @@ export const getIssueProviderTooltip = (issueProvider: IssueProvider): string =>
         return sanitizeIcalUrlForDisplay(issueProvider.icalUrl);
       case 'REDMINE':
         return issueProvider.projectId;
+      case 'BASECAMP':
+        return issueProvider.bucketId;
       case 'OPEN_PROJECT':
         return issueProvider.projectId;
       case 'TRELLO':
@@ -132,6 +134,8 @@ export const getIssueProviderInitials = (
         .toUpperCase();
     case 'REDMINE':
       return issueProvider.projectId?.substring(0, 2).toUpperCase();
+    case 'BASECAMP':
+      return issueProvider.bucketId?.substring(0, 2).toUpperCase() || 'BC';
     case 'OPEN_PROJECT':
       return issueProvider.projectId?.substring(0, 2).toUpperCase();
 

@@ -19,6 +19,11 @@ export const isIssueDone = (searchResultItem: SearchResultItem): boolean => {
         (searchResultItem as SearchResultItem<'REDMINE'>).issueData.status?.name,
       );
 
+    case 'BASECAMP':
+      return Boolean(
+        (searchResultItem as SearchResultItem<'BASECAMP'>).issueData.completed,
+      );
+
     case 'OPEN_PROJECT':
       return false;
 

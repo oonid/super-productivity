@@ -27,6 +27,7 @@ import { RedmineCommonInterfacesService } from './providers/redmine/redmine-comm
 import { CalendarCommonInterfacesService } from './providers/calendar/calendar-common-interfaces.service';
 import { PluginIssueProviderAdapterService } from '../../plugins/issue-provider/plugin-issue-provider-adapter.service';
 import { PluginIssueProviderRegistryService } from '../../plugins/issue-provider/plugin-issue-provider-registry.service';
+import { BasecampCommonInterfacesService } from './providers/basecamp/basecamp-common-interfaces.service';
 
 describe('IssueService', () => {
   let service: IssueService;
@@ -166,11 +167,16 @@ describe('IssueService', () => {
           provide: CalendarCommonInterfacesService,
           useValue: mockCommonInterfaceService,
         },
+        { provide: BasecampCommonInterfacesService, useValue: mockCommonInterfaceService },
         { provide: PluginIssueProviderAdapterService, useValue: pluginAdapterSpy },
         { provide: PluginIssueProviderRegistryService, useValue: pluginRegistrySpy },
       ],
     });
     service = TestBed.inject(IssueService);
+  });
+
+  it('registers the Basecamp provider in the central issue service map', () => {
+    expect(service.ISSUE_SERVICE_MAP['BASECAMP']).toBeDefined();
   });
 
   describe('addTaskFromIssue - ICAL task already exists', () => {

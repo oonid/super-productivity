@@ -11,6 +11,8 @@ export const getIssueProviderHelpLink = (
       return 'https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests';
     case 'GITLAB':
       return 'https://docs.gitlab.com/ee/user/search/advanced_search.html';
+    case 'BASECAMP':
+      return 'https://github.com/basecamp/bc3-api';
     // case 'GITEA':
     // case 'CALDAV':
     // case 'REDMINE':

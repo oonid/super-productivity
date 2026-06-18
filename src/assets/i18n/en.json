@@ -183,6 +183,34 @@
         "NO_PANELS_MSG": "This board has no panels configured. Add some panels to it."
       }
     },
+    "BASECAMP": {
+      "FORM": {
+        "ACCESS_TOKEN": "Access token",
+        "ACCOUNT_ID": "Account ID",
+        "BUCKET_ID": "Bucket ID",
+        "TODOLIST_ID": "Todo list ID",
+        "TIME_TRACKING": "Time tracking",
+        "TIME_TRACKING_OFF": "Off",
+        "TIME_TRACKING_ON_STOP": "On stop",
+        "TIME_TRACKING_ON_DONE": "On done",
+        "TIME_TRACKING_BOTH": "On stop and done",
+        "CONNECT": "Connect Basecamp",
+        "SELECTED_ACCOUNT": "Basecamp Account",
+        "SELECTED_ACCOUNT_DESC": "Filled after Connect Basecamp. Raw account id remains editable below.",
+        "TODOLIST_URL": "Basecamp Todolist URL",
+        "TODOLIST_URL_DESC": "Paste a Basecamp todolist URL to fill the bucket and todo-list ids."
+      },
+      "FORM_SECTION": {
+        "ADVANCED": "Advanced Config",
+        "HELP": "<p>Here you can configure Super Productivity to connect to a Basecamp account and import todos from a chosen project bucket and todo list.</p><p>The MVP uses a pasted access token and supports a future time-tracking mode selection.</p>",
+        "TITLE": "Basecamp"
+      },
+      "S": {
+        "CONNECT_SUCCESS": "Basecamp connected. Token stored in provider config.",
+        "URL_PARSE_FAILED": "Could not parse Basecamp todolist URL",
+        "ACCOUNT_MISMATCH": "Basecamp URL account {{parsedAccountId}} does not match selected account {{currentAccountId}}"
+      }
+    },
     "CALDAV": {
       "FORM": {
         "CALDAV_CATEGORY_FILTER": "Category to filter issues for (leave empty for none)",

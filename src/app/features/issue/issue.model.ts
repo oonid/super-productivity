@@ -10,6 +10,8 @@ import {
   OpenProjectWorkPackageReduced,
 } from './providers/open-project/open-project-issue.model';
 import { RedmineCfg } from './providers/redmine/redmine.model';
+import { BasecampCfg } from './providers/basecamp/basecamp.model';
+import { BasecampTodo } from './providers/basecamp/basecamp-issue.model';
 import { RedmineIssue } from './providers/redmine/redmine-issue.model';
 import { TrelloCfg } from './providers/trello/trello.model';
 import { TrelloIssue, TrelloIssueReduced } from './providers/trello/trello-issue.model';
@@ -47,6 +49,7 @@ export type BuiltInIssueProviderKey =
   | 'OPEN_PROJECT'
   | 'TRELLO'
   | 'REDMINE'
+  | 'BASECAMP'
   | 'AZURE_DEVOPS'
   | 'NEXTCLOUD_DECK';
 
@@ -76,6 +79,7 @@ const BUILT_IN_KEYS: ReadonlySet<string> = new Set<BuiltInIssueProviderKey>([
   'OPEN_PROJECT',
   'TRELLO',
   'REDMINE',
+  'BASECAMP',
   'AZURE_DEVOPS',
   'NEXTCLOUD_DECK',
 ]);
@@ -99,6 +103,7 @@ export type IssueIntegrationCfg =
   | OpenProjectCfg
   | TrelloCfg
   | RedmineCfg
+  | BasecampCfg
   | AzureDevOpsCfg
   | NextcloudDeckCfg;
 
@@ -117,6 +122,7 @@ export interface IssueIntegrationCfgs {
   OPEN_PROJECT?: OpenProjectCfg;
   TRELLO?: TrelloCfg;
   REDMINE?: RedmineCfg;
+  BASECAMP?: BasecampCfg;
   AZURE_DEVOPS?: AzureDevOpsCfg;
   NEXTCLOUD_DECK?: NextcloudDeckCfg;
 }
@@ -128,6 +134,7 @@ export type IssueData =
   | ICalIssue
   | OpenProjectWorkPackage
   | RedmineIssue
+  | BasecampTodo
   | TrelloIssue
   | AzureDevOpsIssue
   | NextcloudDeckIssue
@@ -140,6 +147,7 @@ export type IssueDataReduced =
   | CaldavIssueReduced
   | ICalIssueReduced
   | RedmineIssue
+  | BasecampTodo
   | TrelloIssueReduced
   | AzureDevOpsIssueReduced
   | NextcloudDeckIssueReduced
@@ -160,6 +168,8 @@ export type IssueDataReducedMap = {
               ? TrelloIssueReduced
               : K extends 'REDMINE'
                 ? RedmineIssue
+                : K extends 'BASECAMP'
+                  ? BasecampTodo
                 : K extends 'AZURE_DEVOPS'
                   ? AzureDevOpsIssueReduced
                   : K extends 'NEXTCLOUD_DECK'
@@ -171,7 +181,6 @@ export type IssueDataReducedMap = {
                         : never;
 };
 
-// TODO: add issue model to the IssueDataReducedMap
 
 export interface SearchResultItem<
   T extends keyof IssueDataReducedMap = keyof IssueDataReducedMap,
@@ -246,6 +255,10 @@ export interface IssueProviderRedmine extends IssueProviderBase, RedmineCfg {
   issueProviderKey: 'REDMINE';
 }
 
+export interface IssueProviderBasecamp extends IssueProviderBase, BasecampCfg {
+  issueProviderKey: 'BASECAMP';
+}
+
 export interface IssueProviderCalendar extends IssueProviderBase, CalendarProviderCfg {
   issueProviderKey: 'ICAL';
 }
@@ -283,6 +296,7 @@ export type IssueProvider =
   | IssueProviderOpenProject
   | IssueProviderGitea
   | IssueProviderRedmine
+  | IssueProviderBasecamp
   | IssueProviderTrello
   | IssueProviderLinear
   | IssueProviderAzureDevOps
@@ -301,7 +315,9 @@ export type IssueProviderTypeMap<T extends IssueProviderKey> = T extends 'JIRA'
           ? IssueProviderOpenProject
           : T extends 'REDMINE'
             ? IssueProviderRedmine
-            : T extends 'CALDAV'
+            : T extends 'BASECAMP'
+              ? IssueProviderBasecamp
+              : T extends 'CALDAV'
               ? IssueProviderCaldav
               : T extends 'ICAL'
                 ? IssueProviderCalendar

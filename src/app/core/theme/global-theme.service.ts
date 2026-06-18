@@ -200,6 +200,7 @@ export class GlobalThemeService {
       ['remove_today', 'assets/icons/remove-today-48px.svg'],
       ['gitea', 'assets/icons/gitea.svg'],
       ['redmine', 'assets/icons/redmine.svg'],
+      ['basecamp', 'assets/icons/basecamp.svg'],
       ['linear', 'assets/icons/linear.svg'],
       ['clickup', 'assets/icons/clickup.svg'],
       // trello icon
