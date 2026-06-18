@@ -19,6 +19,7 @@ import { T } from '../../../t.const';
 import {
   IssueIntegrationCfg,
   IssueProvider,
+  IssueProviderBasecamp,
   IssueProviderKey,
   IssueProviderTypeMap,
   BuiltInIssueProviderKey,
@@ -72,6 +73,13 @@ import { ISSUE_PROVIDER_COMMON_FORM_FIELDS } from '../common-issue-form-stuff.co
 import { TagService } from '../../tag/tag.service';
 import { ChipListInputComponent } from '../../../ui/chip-list-input/chip-list-input.component';
 import { unique } from '../../../util/unique';
+import { BasecampOAuthFlowService } from '../providers/basecamp/basecamp-oauth-flow.service';
+import { autoSelectAccountId } from '../providers/basecamp/basecamp-account-discovery';
+import {
+  parseBasecampTodolistUrl,
+  resolveBasecampTodolistUrl,
+} from '../providers/basecamp/basecamp-config-from-url';
+import { formatBasecampAccountLabel } from '../providers/basecamp/basecamp-account-discovery';
 
 @Component({
   selector: 'dialog-edit-issue-provider',
@@ -179,6 +187,7 @@ export class DialogEditIssueProviderComponent {
   private _snackService = inject(SnackService);
   private _taskService = inject(TaskService);
   private _tagService = inject(TagService);
+  private _basecampOAuthFlowService = inject(BasecampOAuthFlowService);
 
   tagSuggestions = toSignal(this._tagService.tagsNoMyDayAndNoList$, { initialValue: [] });
 
@@ -205,6 +214,7 @@ export class DialogEditIssueProviderComponent {
   }
 
   constructor() {
+    this._patchBasecampFormFields();
     this._initOAuthAndOptions().catch((err) => {
       IssueLog.err(
         '[DialogEditIssueProvider] OAuth init failed',
@@ -254,6 +264,43 @@ export class DialogEditIssueProviderComponent {
   }
 
   formlyModelChange(model: Partial<IssueProvider>): void {
+    if (this.issueProviderKey === 'BASECAMP') {
+      const m = model as Partial<IssueProviderBasecamp>;
+      const prevUrl = (this.model as Partial<IssueProviderBasecamp>).todolistUrl;
+      if (m.todolistUrl && m.todolistUrl !== prevUrl) {
+        const parsed = parseBasecampTodolistUrl(m.todolistUrl);
+        if (parsed) {
+          const resolved = resolveBasecampTodolistUrl(parsed, m.accountId);
+          if (resolved.kind === 'match') {
+            model = {
+              ...model,
+              ...resolved.patch,
+            } as Partial<IssueProvider>;
+          } else {
+            this._snackService.open({
+              type: 'ERROR',
+              msg: T.F.BASECAMP.S.ACCOUNT_MISMATCH,
+              translateParams: {
+                parsedAccountId: resolved.parsedAccountId,
+                currentAccountId: resolved.currentAccountId,
+              },
+            });
+          }
+        } else if (m.todolistUrl.includes('basecamp.com')) {
+          this._snackService.open({
+            type: 'ERROR',
+            msg: T.F.BASECAMP.S.URL_PARSE_FAILED,
+          });
+        }
+      }
+      if (m.selectedAccountId) {
+        const selectedAccountId = m.selectedAccountId;
+        model = {
+          ...model,
+          accountId: selectedAccountId,
+        } as Partial<IssueProvider>;
+      }
+    }
     this.updateModel(model);
   }
 
@@ -267,24 +314,10 @@ export class DialogEditIssueProviderComponent {
   }
 
   updateModel(model: Partial<IssueProvider>): void {
-    // NOTE: this currently throws an error when loading issue point stuff for jira
-    try {
-      Object.keys(model).forEach((key) => {
-        if (key !== 'isEnabled') {
-          this.model![key] = model[key];
-        }
-      });
-    } catch (e) {
-      devError(e);
-      const updates: any = {};
-      Object.keys(model).forEach((key) => {
-        if (key !== 'isEnabled') {
-          updates[key] = model[key as keyof IssueProvider];
-        }
-      });
-      this.model = { ...this.model, ...updates };
-    }
-
+    const updates = this._sanitizeModelUpdates(model);
+    this.model = { ...this.model, ...updates } as Partial<IssueProvider>;
+    this._patchFormValues(updates);
+    this._refreshFormlyBindings();
     this.isConnectionWorks.set(false);
   }
 
@@ -668,6 +701,127 @@ export class DialogEditIssueProviderComponent {
         ...(f.pattern ? { pattern: f.pattern } : {}),
       },
     };
+  }
+
+  private _patchBasecampFormFields(): void {
+    if (this.issueProviderKey !== 'BASECAMP') {
+      return;
+    }
+
+    const connectBtn = (this.fields as FormlyFieldConfig[]).find(
+      (f) => f.type === 'btn' && f.templateOptions?.text === T.F.BASECAMP.FORM.CONNECT,
+    );
+    if (connectBtn?.templateOptions) {
+      connectBtn.templateOptions.onClick = async () => {
+        this.isOAuthConnecting.set(true);
+        try {
+          const tokens = await this._basecampOAuthFlowService.connect();
+          this.updateModel({
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            tokenExpiresAt: tokens.tokenExpiresAt,
+          } as Partial<IssueProvider>);
+          this.isOAuthConnected.set(true);
+          this._snackService.open({
+            type: 'SUCCESS',
+            msg: T.F.BASECAMP.S.CONNECT_SUCCESS,
+          });
+
+          try {
+            const accounts = await this._basecampOAuthFlowService.discoverAccounts(
+              tokens.accessToken,
+            );
+            const accountField = this._findFormlyField(
+              this.fields as FormlyFieldConfig[],
+              'selectedAccountId',
+            );
+            const options = accounts.map((a) => ({
+              value: a.id,
+              label: formatBasecampAccountLabel(a),
+            }));
+            if (accountField?.templateOptions) {
+              accountField.templateOptions.options = options;
+            } else if (accountField?.props) {
+              accountField.props.options = options;
+            }
+            const auto = autoSelectAccountId(accounts);
+            if (auto) {
+              this.updateModel({
+                accountId: auto,
+                selectedAccountId: auto,
+              } as Partial<IssueProvider>);
+            } else {
+              this._refreshFormlyBindings();
+            }
+          } catch (e) {
+            IssueLog.err(
+              '[DialogEditIssueProvider] Basecamp account discovery failed',
+              e,
+            );
+          }
+        } catch (e) {
+          const detail = (e instanceof Error ? e.message : String(e))
+            .replace(/\s+/g, ' ')
+            .slice(0, 200);
+          this._snackService.open({
+            type: 'ERROR',
+            msg: detail,
+            isSkipTranslate: true,
+          });
+        } finally {
+          this.isOAuthConnecting.set(false);
+        }
+        return undefined;
+      };
+    }
+
+    const accountField = this._findFormlyField(
+      this.fields as FormlyFieldConfig[],
+      'selectedAccountId',
+    );
+    const currentAccountId = (this.model as Partial<IssueProviderBasecamp>).accountId;
+    const options = currentAccountId
+      ? [{ value: currentAccountId, label: String(currentAccountId) }]
+      : [];
+    if (accountField?.templateOptions) {
+      accountField.templateOptions.options = options;
+    } else if (accountField?.props) {
+      accountField.props.options = options;
+    }
+  }
+
+  private _sanitizeModelUpdates(model: Partial<IssueProvider>): Partial<IssueProvider> {
+    return Object.keys(model).reduce((acc, key) => {
+      if (key !== 'isEnabled') {
+        (acc as Record<string, unknown>)[key] = model[
+          key as keyof IssueProvider
+        ] as unknown;
+      }
+      return acc;
+    }, {} as Partial<IssueProvider>);
+  }
+
+  private _patchFormValues(model: Partial<IssueProvider>): void {
+    try {
+      Object.entries(model).forEach(([key, value]) => {
+        const control = this.form.get(key);
+        if (control) {
+          control.patchValue(value, { emitEvent: false });
+          control.markAsDirty();
+          control.markAsTouched();
+          control.updateValueAndValidity({ emitEvent: false });
+        }
+      });
+      this.form.updateValueAndValidity({ emitEvent: false });
+    } catch (e) {
+      devError(e);
+    }
+  }
+
+  private _refreshFormlyBindings(): void {
+    this.fields = [...this.fields];
+    this.model = { ...this.model };
+    this._cdr.detectChanges();
   }
 
   private _buildTwoWaySyncSection(

@@ -34,10 +34,12 @@ export const initPluginOAuth = (mainWin: BrowserWindow): void => {
   // Prepare: start a loopback HTTP server and return the port.
   // Google Desktop OAuth requires http://127.0.0.1:<port> redirect URIs
   // and blocks embedded webviews, so we open the system browser instead.
-  ipcMain.handle(IPC.PLUGIN_OAUTH_PREPARE, async (): Promise<{ port: number }> => {
-    cleanupServer();
+  ipcMain.handle(
+    IPC.PLUGIN_OAUTH_PREPARE,
+    async (_ev, opts?: { port?: number }): Promise<{ port: number }> => {
+      cleanupServer();
 
-    return new Promise<{ port: number }>((resolve, reject) => {
+      return new Promise<{ port: number }>((resolve, reject) => {
       let handled = false;
 
       const server = createServer((req, res) => {
@@ -69,7 +71,7 @@ export const initPluginOAuth = (mainWin: BrowserWindow): void => {
         cleanupServer();
       });
 
-      server.listen(0, LOOPBACK_HOST, () => {
+      server.listen(opts?.port ?? 0, LOOPBACK_HOST, () => {
         const addr = server.address();
         if (addr && typeof addr !== 'string') {
           loopbackServer = server;
@@ -88,8 +90,9 @@ export const initPluginOAuth = (mainWin: BrowserWindow): void => {
       server.on('error', (err) => {
         reject(err);
       });
-    });
-  });
+      });
+    },
+  );
 
   // Open the auth URL in the system browser (not an embedded webview).
   // Google blocks OAuth in embedded browsers (Electron BrowserWindow).
