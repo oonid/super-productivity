@@ -209,6 +209,7 @@ export class GlobalThemeService {
       ['jira', 'assets/icons/jira.svg'],
       ['caldav', 'assets/icons/caldav.svg'],
       ['calendar', 'assets/icons/calendar.svg'],
+      ['basecamp', 'assets/icons/basecamp.svg'],
       ['open_project', 'assets/icons/open-project.svg'],
       ['remove_today', 'assets/icons/remove-today-48px.svg'],
       ['gitea', 'assets/icons/gitea.svg'],
