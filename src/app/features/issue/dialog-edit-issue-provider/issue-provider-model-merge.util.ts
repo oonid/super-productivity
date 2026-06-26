@@ -15,7 +15,13 @@ const mergePluginConfig = (
   }
 
   const merged = { ...current };
+  // Deep merge is intentional; nested keys clear only by explicit value, never by omission.
   for (const [key, updateValue] of Object.entries(update)) {
+    // Defense-in-depth: skip prototype-polluting keys (pluginConfig comes from form models,
+    // not raw JSON.parse, but filter defensively anyway).
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
     if (isPlainObject(current[key]) && isPlainObject(updateValue)) {
       merged[key] = mergePluginConfig(current[key], updateValue);
     } else {

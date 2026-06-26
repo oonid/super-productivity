@@ -1,6 +1,10 @@
 import { BrowserWindow, ipcMain, shell } from 'electron';
 import { createServer, Server } from 'http';
 import { IPC } from './shared-with-frontend/ipc-events.const';
+import {
+  OAUTH_LOOPBACK_PORT_MIN,
+  OAUTH_LOOPBACK_PORT_MAX,
+} from './shared-with-frontend/oauth-loopback.const';
 import { log } from 'electron-log/main';
 
 const LOOPBACK_HOST = '127.0.0.1';
@@ -46,12 +50,12 @@ export const initPluginOAuth = (mainWin: BrowserWindow): void => {
         if (requestedPort !== undefined) {
           if (
             !Number.isInteger(requestedPort) ||
-            requestedPort < 1024 ||
-            requestedPort > 65535
+            requestedPort < OAUTH_LOOPBACK_PORT_MIN ||
+            requestedPort > OAUTH_LOOPBACK_PORT_MAX
           ) {
             reject(
               new Error(
-                `Invalid OAuth loopback port ${requestedPort}; must be an integer in [1024, 65535].`,
+                `Invalid OAuth loopback port ${requestedPort}; must be an integer in [${OAUTH_LOOPBACK_PORT_MIN}, ${OAUTH_LOOPBACK_PORT_MAX}].`,
               ),
             );
             return;
@@ -89,7 +93,9 @@ export const initPluginOAuth = (mainWin: BrowserWindow): void => {
         });
 
         server.on('error', (err) => {
-          server.close();
+          cleanupServer();
+          // Note: EADDRINUSE message interpolates port which is 0 only in the system-assigned
+          // (no requested port) case — where EADDRINUSE effectively cannot occur.
           if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
             reject(
               new Error(

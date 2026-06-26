@@ -7,6 +7,10 @@ import { PluginOAuthTokens } from './plugin-oauth.model';
 import { IS_ELECTRON } from '../../app.constants';
 import { IS_NATIVE_PLATFORM, IS_ANDROID_NATIVE } from '../../util/is-native-platform';
 import { PluginLog } from '../../core/log';
+import {
+  OAUTH_LOOPBACK_PORT_MIN,
+  OAUTH_LOOPBACK_PORT_MAX,
+} from '../../../../electron/shared-with-frontend/oauth-loopback.const';
 
 const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 const OAUTH_REDIRECT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -43,7 +47,7 @@ export class PluginOAuthService {
     }
 
     if (IS_ELECTRON) {
-      const loopbackPort = this._getElectronLoopbackPort(redirectUri);
+      const loopbackPort = redirectUri ? Number(new URL(redirectUri).port) : undefined;
       const { port } = await window.ea.pluginOAuthPrepare(loopbackPort);
       return redirectUri || `http://127.0.0.1:${port}`;
     }
@@ -122,6 +126,16 @@ export class PluginOAuthService {
           `OAuth redirectUri on desktop must be a loopback URI like http://127.0.0.1:<port>/...; got ${redirectUri}`,
         );
       }
+      const port = Number(parsed.port);
+      if (
+        !Number.isInteger(port) ||
+        port < OAUTH_LOOPBACK_PORT_MIN ||
+        port > OAUTH_LOOPBACK_PORT_MAX
+      ) {
+        throw new Error(
+          `OAuth redirectUri on desktop must use a port in range [${OAUTH_LOOPBACK_PORT_MIN}, ${OAUTH_LOOPBACK_PORT_MAX}]; got ${redirectUri}`,
+        );
+      }
       return;
     }
     if (IS_NATIVE_PLATFORM) {
@@ -137,24 +151,6 @@ export class PluginOAuthService {
       throw new Error(
         `OAuth redirectUri on web must be same-origin (${window.location.origin}); got ${redirectUri}`,
       );
-    }
-  }
-
-  private _getElectronLoopbackPort(redirectUri?: string): number | undefined {
-    if (!redirectUri) {
-      return undefined;
-    }
-
-    try {
-      const parsed = new URL(redirectUri);
-      const isLoopbackHost = parsed.hostname === '127.0.0.1';
-      if (parsed.protocol !== 'http:' || !isLoopbackHost || !parsed.port) {
-        return undefined;
-      }
-      const port = Number(parsed.port);
-      return Number.isInteger(port) && port > 0 ? port : undefined;
-    } catch {
-      return undefined;
     }
   }
 

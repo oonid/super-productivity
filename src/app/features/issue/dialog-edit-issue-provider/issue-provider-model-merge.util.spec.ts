@@ -122,4 +122,23 @@ describe('issue-provider-model-merge.util', () => {
       },
     });
   });
+
+  it('does not apply prototype-polluting keys (__proto__, constructor, prototype)', () => {
+    // Build the malicious update via JSON.parse so __proto__/constructor are real own
+    // enumerable keys (the actual pollution vector), not object-literal special forms.
+    const maliciousPluginConfig = JSON.parse(
+      '{"__proto__":{"polluted":"x"},"constructor":{"polluted":"y"},"prototype":{"polluted":"z"},"safe":"updated"}',
+    );
+    const result = mergeIssueProviderModelUpdates(
+      { pluginConfig: { safe: 'value' } } as any,
+      { pluginConfig: maliciousPluginConfig } as any,
+    );
+
+    const merged = (result as { pluginConfig?: Record<string, unknown> }).pluginConfig!;
+    // The safe key is updated, the polluting keys are skipped, and nothing leaks to Object.prototype.
+    expect(merged['safe']).toBe('updated');
+    expect(Object.prototype.hasOwnProperty.call(merged, 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(merged, 'prototype')).toBe(false);
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+  });
 });
