@@ -417,8 +417,13 @@ export interface OAuthFlowConfig {
   /** Additional query parameters to append to the authorization URL (e.g. access_type, prompt). */
   extraAuthParams?: Record<string, string>;
   /**
-   * Optional redirect URI override for providers or user-supplied OAuth apps
-   * that require an exact pre-registered callback instead of the host default.
+   * Optional redirect URI override for the desktop (Electron) loopback flow — e.g.
+   * a user-supplied OAuth app that requires an exact pre-registered
+   * `http://127.0.0.1:<port>/...` callback instead of the host default.
+   *
+   * Desktop-only: web and native each have a single valid callback (the host's
+   * `/assets/oauth-callback.html` page and the app's fixed custom scheme), so this
+   * field is ignored (stripped) on those platforms and the platform default is used.
    */
   redirectUri?: string;
 }

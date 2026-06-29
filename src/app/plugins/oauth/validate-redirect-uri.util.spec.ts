@@ -192,16 +192,16 @@ describe('validateOAuthRedirectUri', () => {
   });
 
   describe('edge cases', () => {
-    it('should reject when all platforms are false (invalid state)', () => {
-      const invalidPlatform: RedirectUriPlatform = {
+    it('rejects a cross-origin redirectUri on web (neither electron nor native)', () => {
+      const webPlatform: RedirectUriPlatform = {
         isElectron: false,
         isNative: false,
         origin: 'https://app.example.com',
       };
 
-      // Should fall through to web validation (requires exact path)
+      // !electron && !native => web validation: requires the exact same-origin callback path
       expect(() =>
-        validateOAuthRedirectUri('https://evil.com/cb', invalidPlatform),
+        validateOAuthRedirectUri('https://evil.com/cb', webPlatform),
       ).toThrowError(/must be.*oauth-callback\.html/);
     });
 

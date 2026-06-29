@@ -58,9 +58,10 @@ describe('PluginOAuthBridgeService', () => {
     expect(oauthService.prepareRedirectUri).not.toHaveBeenCalled();
   });
 
-  it('honors an explicit redirectUri override while preparing the matching loopback listener', async () => {
+  it('strips a desktop loopback redirectUri on the web flow and falls through to the host callback default', async () => {
     spyOn(window, 'open').and.returnValue({} as Window);
-    oauthService.prepareRedirectUri.and.resolveTo('http://127.0.0.1:8976/callback');
+    const webCallback = 'https://app.super-productivity.com/assets/oauth-callback.html';
+    oauthService.prepareRedirectUri.and.resolveTo(webCallback);
     oauthService.buildAuthUrl.and.resolveTo({
       url: 'https://accounts.google.com/o/oauth2/v2/auth',
       codeVerifier: 'verifier',
@@ -74,35 +75,38 @@ describe('PluginOAuthBridgeService', () => {
     });
     oauthService.serializeTokens.and.returnValue(null);
 
+    // A web-capable plugin (webClientId) that ALSO declares a desktop loopback redirectUri:
+    // on web the redirectUri must be dropped so the flow uses the host callback default,
+    // instead of throwing because the loopback URI fails web validation.
     await service.startOAuthFlow('test-plugin', {
       ...baseConfig,
       webClientId: 'web-client-id',
       redirectUri: 'http://127.0.0.1:8976/callback',
     });
 
-    expect(oauthService.prepareRedirectUri).toHaveBeenCalledWith(
-      'http://127.0.0.1:8976/callback',
-    );
+    expect(oauthService.prepareRedirectUri).toHaveBeenCalledWith(undefined);
     expect(oauthService.buildAuthUrl).toHaveBeenCalledWith(
       jasmine.objectContaining({
         clientId: 'web-client-id',
         clientSecret: undefined,
-        redirectUri: 'http://127.0.0.1:8976/callback',
+        redirectUri: undefined,
       }),
-      'http://127.0.0.1:8976/callback',
+      webCallback,
     );
     expect(oauthService.exchangeCodeForTokens).toHaveBeenCalledWith(
       jasmine.objectContaining({
         clientId: 'web-client-id',
         clientSecret: undefined,
-        redirectUri: 'http://127.0.0.1:8976/callback',
+        redirectUri: webCallback,
       }),
     );
   });
 
   it('persists oauth tokens in the local token store after a successful flow', async () => {
     spyOn(window, 'open').and.returnValue({} as Window);
-    oauthService.prepareRedirectUri.and.resolveTo('http://127.0.0.1:8976/callback');
+    oauthService.prepareRedirectUri.and.resolveTo(
+      'https://app.super-productivity.com/assets/oauth-callback.html',
+    );
     oauthService.buildAuthUrl.and.resolveTo({
       url: 'https://accounts.google.com/o/oauth2/v2/auth',
       codeVerifier: 'verifier',
@@ -119,7 +123,6 @@ describe('PluginOAuthBridgeService', () => {
     await service.startOAuthFlow('test-plugin', {
       ...baseConfig,
       webClientId: 'web-client-id',
-      redirectUri: 'http://127.0.0.1:8976/callback',
     });
 
     expect(await loadOAuthTokens('test-plugin__oauth')).toBe('serialized-tokens');

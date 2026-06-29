@@ -48,14 +48,29 @@ export class PluginOAuthBridgeService {
     // client (loopback redirect, used by Electron); other platforms override it.
     // - Android/iOS authenticate via app signing → no client secret
     // - Web can only use providers that support public browser clients via PKCE
+    // A plugin-declared `redirectUri` is the desktop loopback override; web/native each
+    // have a single valid callback (the host callback page / the app's fixed scheme), so
+    // strip it on those branches and let prepareRedirectUri produce the platform default —
+    // otherwise a web/native-capable plugin that also sets a desktop redirectUri throws at
+    // connect time on those platforms.
     // Order matters: Android-WebView sets both IS_ANDROID_NATIVE and IS_NATIVE_PLATFORM,
     // so it lands in the Android branch (correct) and never reaches the web branch.
     const effectiveConfig = ((): OAuthFlowConfig => {
       if (IS_ANDROID_NATIVE && config.mobileClientId) {
-        return { ...config, clientId: config.mobileClientId, clientSecret: undefined };
+        return {
+          ...config,
+          clientId: config.mobileClientId,
+          clientSecret: undefined,
+          redirectUri: undefined,
+        };
       }
       if (IS_IOS_NATIVE && config.iosClientId) {
-        return { ...config, clientId: config.iosClientId, clientSecret: undefined };
+        return {
+          ...config,
+          clientId: config.iosClientId,
+          clientSecret: undefined,
+          redirectUri: undefined,
+        };
       }
       if (!IS_ELECTRON && !IS_NATIVE_PLATFORM) {
         const webClientId = config.webClientId;
@@ -68,6 +83,7 @@ export class PluginOAuthBridgeService {
           ...config,
           clientId: webClientId,
           clientSecret: undefined,
+          redirectUri: undefined,
         };
       }
       return config;
